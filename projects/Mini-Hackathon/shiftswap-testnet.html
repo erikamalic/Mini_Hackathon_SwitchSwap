@@ -1,0 +1,1202 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ShiftSwap · TESTNET — Campus shifts, settled on Stellar</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          ink: '#0D0F17',
+          panel: '#1E2336',
+          violet: { DEFAULT: '#6366F1', soft: '#818CF8' },
+          cyanic: '#06B6D4',
+        },
+        fontFamily: {
+          sans: ['Inter', 'system-ui', 'sans-serif'],
+          mono: ['JetBrains Mono', 'monospace'],
+        },
+      }
+    }
+  }
+</script>
+<style>
+  * { -webkit-tap-highlight-color: transparent; }
+  body {
+    background-color: #0D0F17;
+    background-image:
+      radial-gradient(1200px 600px at 85% -10%, rgba(99,102,241,.14), transparent 60%),
+      radial-gradient(900px 500px at -10% 20%, rgba(6,182,212,.10), transparent 60%),
+      radial-gradient(700px 700px at 50% 110%, rgba(99,102,241,.08), transparent 60%);
+    background-attachment: fixed;
+  }
+  .glass {
+    background: linear-gradient(160deg, rgba(30,35,54,.62), rgba(20,24,38,.55));
+    border: 1px solid rgba(129,140,248,.14);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+  }
+  .glass-strong {
+    background: linear-gradient(160deg, rgba(34,40,60,.85), rgba(18,22,35,.9));
+    border: 1px solid rgba(129,140,248,.22);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+  }
+  .glow-violet { box-shadow: 0 0 24px -6px rgba(99,102,241,.55); }
+  .glow-cyan { box-shadow: 0 0 24px -6px rgba(6,182,212,.55); }
+  .card-hover { transition: transform .35s cubic-bezier(.22,1,.36,1), box-shadow .35s, border-color .35s; }
+  .card-hover:hover {
+    transform: translateY(-5px);
+    border-color: rgba(129,140,248,.45);
+    box-shadow: 0 18px 40px -18px rgba(99,102,241,.45), 0 0 0 1px rgba(129,140,248,.12);
+  }
+  .grad-text {
+    background: linear-gradient(90deg, #818CF8, #22D3EE);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .pill { border-radius: 999px; }
+  /* Status dots */
+  .dot { width: 7px; height: 7px; border-radius: 999px; display: inline-block; }
+  .dot-live { background:#34D399; box-shadow:0 0 10px #34D399; animation: blink 1.8s ease-in-out infinite; }
+  .dot-cyan { background:#22D3EE; box-shadow:0 0 10px #22D3EE; animation: blink 1.6s ease-in-out infinite; }
+  .dot-violet { background:#818CF8; box-shadow:0 0 10px #818CF8; }
+  .dot-slate { background:#64748B; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.35} }
+  /* Modal */
+  .modal { transition: opacity .25s ease; }
+  .modal.hidden-modal { opacity: 0; pointer-events: none; }
+  .modal.hidden-modal .modal-box { transform: translateY(24px) scale(.97); opacity: 0; }
+  .modal-box { transition: transform .3s cubic-bezier(.22,1,.36,1), opacity .25s; }
+  /* Stepper */
+  .step { transition: all .4s ease; }
+  .step .ring { transition: all .4s ease; }
+  .step.done .ring { background: linear-gradient(135deg,#6366F1,#06B6D4); border-color: transparent; box-shadow: 0 0 16px -2px rgba(99,102,241,.7); }
+  .step.active .ring { border-color: #22D3EE; animation: ringpulse 1.4s ease-in-out infinite; }
+  .step.pending { opacity: .4; }
+  @keyframes ringpulse {
+    0%,100% { box-shadow: 0 0 0 0 rgba(34,211,238,.5); }
+    50% { box-shadow: 0 0 0 7px rgba(34,211,238,0); }
+  }
+  .spinner {
+    width: 14px; height: 14px; border-radius: 999px;
+    border: 2px solid rgba(34,211,238,.25); border-top-color: #22D3EE;
+    animation: spin .7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  /* Token flow (payment demo) */
+  .lane { position: relative; height: 4px; border-radius: 999px; background: linear-gradient(90deg, rgba(129,140,248,.15), rgba(34,211,238,.15)); overflow: visible; }
+  .token {
+    position: absolute; top: 50%; left: 0; width: 16px; height: 16px; margin: -8px 0 0 -8px;
+    border-radius: 999px;
+    background: radial-gradient(circle at 35% 30%, #A5B4FC, #6366F1 60%, #4338CA);
+    box-shadow: 0 0 14px rgba(99,102,241,.9);
+    transition: left 1.5s cubic-bezier(.45,.05,.35,1), opacity .4s;
+    opacity: 0;
+  }
+  .token.cyan { background: radial-gradient(circle at 35% 30%, #67E8F9, #06B6D4 60%, #0E7490); box-shadow: 0 0 14px rgba(6,182,212,.9); }
+  .token.fly { left: calc(100% - 8px); opacity: 1; }
+  .token.vanish { opacity: 0; }
+  /* Log */
+  .log-line { animation: slidein .35s ease both; }
+  @keyframes slidein { from { opacity:0; transform: translateX(-8px); } to { opacity:1; transform:none; } }
+  /* Card entrance */
+  .enter { animation: enter .5s cubic-bezier(.22,1,.36,1) both; }
+  @keyframes enter { from { opacity:0; transform: translateY(14px); } to { opacity:1; transform:none; } }
+  /* Toast */
+  .toast { animation: toastin .35s cubic-bezier(.22,1,.36,1) both; }
+  @keyframes toastin { from { opacity:0; transform: translateY(12px) scale(.96); } to { opacity:1; transform:none; } }
+  .toast.out { animation: toastout .3s ease both; }
+  @keyframes toastout { to { opacity:0; transform: translateY(8px) scale(.96); } }
+  /* Dropdown */
+  .dd { transition: opacity .18s ease, transform .18s ease; }
+  .dd.closed { opacity: 0; pointer-events: none; transform: translateY(-6px); }
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 9px; height: 9px; }
+  ::-webkit-scrollbar-track { background: #0D0F17; }
+  ::-webkit-scrollbar-thumb { background: #2A3050; border-radius: 999px; }
+  ::-webkit-scrollbar-thumb:hover { background: #3B4270; }
+  input[type="date"], input[type="time"] { color-scheme: dark; }
+  .shake { animation: shake .4s ease; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
+</style>
+</head>
+<body class="font-sans text-slate-200 min-h-screen antialiased">
+
+<!-- ══════════════ NAVBAR ══════════════ -->
+<nav class="sticky top-0 z-40 glass border-x-0 border-t-0">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center gap-4">
+    <!-- Brand -->
+    <a href="#" onclick="goFeed(event)" class="flex items-center gap-2.5 group shrink-0">
+      <span class="relative w-9 h-9 rounded-xl bg-gradient-to-br from-violet to-cyanic grid place-items-center glow-violet">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 7h11l-2.5-2.5M20 17H9l2.5 2.5" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </span>
+      <span class="font-extrabold text-lg tracking-tight text-white">Shift<span class="grad-text">Swap</span></span>
+      <span class="pill text-[10px] font-bold px-2 py-0.5 border border-cyanic/50 text-cyanic bg-cyanic/10 glow-cyan tracking-widest uppercase">Testnet</span>
+    </a>
+    <!-- Links -->
+    <div class="hidden md:flex items-center gap-1 ml-6 text-sm">
+      <button onclick="goFeed(event)" class="px-3 py-1.5 rounded-lg hover:bg-white/5 text-slate-300 hover:text-white transition">Feed</button>
+      <button onclick="openPostModal()" class="px-3 py-1.5 rounded-lg hover:bg-white/5 text-slate-300 hover:text-white transition">Post a Shift</button>
+      <button onclick="openProfile()" class="px-3 py-1.5 rounded-lg hover:bg-white/5 text-slate-300 hover:text-white transition">Profile</button>
+      <button onclick="openPaymentDemo()" class="px-3 py-1.5 rounded-lg hover:bg-white/5 text-slate-300 hover:text-white transition">Payment Demo</button>
+    </div>
+    <div class="flex-1"></div>
+    <!-- Wallet -->
+    <div class="relative">
+      <button id="walletBtn" onclick="toggleWalletDD(event)" class="flex items-center gap-2 px-3 py-2 rounded-xl glass hover:border-cyanic/50 transition text-slate-400 hover:text-white">
+        <span class="text-xs font-bold whitespace-nowrap">Connect Freighter</span>
+      </button>
+      <div id="walletDD" class="dd closed absolute right-0 mt-2 w-80 glass-strong rounded-2xl p-4 z-50 shadow-2xl"></div>
+    </div>
+    <!-- Role switcher -->
+    <div class="relative">
+      <button id="actorBtn" onclick="toggleActorDD(event)" class="flex items-center gap-2.5 pl-1.5 pr-3 py-1.5 rounded-xl glass hover:border-violet-soft/50 transition">
+        <span id="actorAvatar" class="w-7 h-7 rounded-full grid place-items-center text-[11px] font-bold text-white bg-gradient-to-br from-violet to-cyanic">MC</span>
+        <span class="text-xs text-slate-400 hidden sm:block leading-tight text-left">
+          <span class="block text-[10px] uppercase tracking-wider text-slate-500">Acting as</span>
+          <span id="actorName" class="block font-semibold text-slate-100">Maya Chen</span>
+        </span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" class="text-slate-500"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+      </button>
+      <div id="actorDD" class="dd closed absolute right-0 mt-2 w-64 glass-strong rounded-2xl p-1.5 z-50 shadow-2xl">
+        <p class="px-3 pt-2 pb-1 text-[10px] uppercase tracking-widest text-slate-500">Switch identity</p>
+        <div id="actorList"></div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- ══════════════ HERO ══════════════ -->
+<header class="max-w-7xl mx-auto px-4 sm:px-6 pt-12 pb-8">
+  <div class="enter">
+    <p class="text-xs font-mono text-cyanic/80 tracking-widest uppercase mb-3 flex items-center gap-2">
+      <span class="dot dot-live"></span> Stellar Testnet · Soroban escrow live
+    </p>
+    <h1 class="text-3xl sm:text-5xl font-extrabold text-white tracking-tight leading-tight max-w-3xl">
+      Swap campus shifts.<br/>Settle in <span class="grad-text">XLM</span>, trustlessly.
+    </h1>
+    <p class="mt-4 text-slate-400 max-w-2xl text-sm sm:text-base leading-relaxed">
+      Working student need a shift covered? Post it with XLM pay. Free between classes?
+      Claim a shift, cover it, get paid through an on-chain escrow. Funds lock when you claim
+      and release automatically once the shift is verified — no IOUs, no chasing payments.
+    </p>
+    <div class="mt-6 flex flex-wrap items-center gap-3">
+      <button onclick="openPostModal()" class="px-5 py-2.5 rounded-xl font-semibold text-sm text-white bg-gradient-to-r from-violet to-cyanic glow-violet hover:opacity-90 hover:scale-[1.03] active:scale-95 transition flex items-center gap-2">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+        Post a Shift
+      </button>
+      <button onclick="resetDemo()" class="px-5 py-2.5 rounded-xl font-semibold text-sm glass hover:border-cyanic/50 hover:text-cyanic transition flex items-center gap-2">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Reset Demo Data
+      </button>
+      <div class="flex items-center gap-4 ml-1 text-xs font-mono text-slate-500">
+        <span><span id="statOpen" class="text-emerald-400 font-semibold">0</span> open</span>
+        <span><span id="statLocked" class="text-cyanic font-semibold">0</span> XLM in escrow</span>
+        <span><span id="statDone" class="text-violet-soft font-semibold">0</span> settled</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ══════════════ FILTER BAR ══════════════ -->
+<div class="max-w-7xl mx-auto px-4 sm:px-6 mb-6">
+  <div class="glass rounded-2xl p-1.5 flex flex-wrap gap-1" id="filterBar"></div>
+</div>
+
+<!-- ══════════════ SHIFT GRID ══════════════ -->
+<main class="max-w-7xl mx-auto px-4 sm:px-6 pb-24">
+  <div id="shiftGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"></div>
+  <div id="emptyState" class="hidden glass rounded-2xl py-20 text-center">
+    <p class="text-4xl mb-3">🗓️</p>
+    <p class="text-slate-300 font-semibold">No shifts here yet</p>
+    <p class="text-slate-500 text-sm mt-1">Try another filter — or post one yourself.</p>
+  </div>
+</main>
+
+<footer class="border-t border-panel py-8 text-center text-xs text-slate-600 font-mono">
+  ShiftSwap · Stellar TESTNET demo · XLM has no real value here · Soroban escrows simulated client-side
+</footer>
+
+<!-- ══════════════ DETAIL / CLAIM MODAL ══════════════ -->
+<div id="detailModal" class="modal hidden-modal fixed inset-0 z-50 grid place-items-center p-4">
+  <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" onclick="closeModal('detailModal')"></div>
+  <div class="modal-box relative glass-strong rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6 shadow-2xl">
+    <button onclick="closeModal('detailModal')" class="absolute top-4 right-4 w-8 h-8 rounded-lg grid place-items-center text-slate-500 hover:text-white hover:bg-white/10 transition">✕</button>
+    <div id="detailBody"></div>
+  </div>
+</div>
+
+<!-- ══════════════ POST A SHIFT MODAL ══════════════ -->
+<div id="postModal" class="modal hidden-modal fixed inset-0 z-50 grid place-items-center p-4">
+  <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" onclick="closeModal('postModal')"></div>
+  <div class="modal-box relative glass-strong rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6 shadow-2xl">
+    <button onclick="closeModal('postModal')" class="absolute top-4 right-4 w-8 h-8 rounded-lg grid place-items-center text-slate-500 hover:text-white hover:bg-white/10 transition">✕</button>
+    <h3 class="text-xl font-bold text-white">Post a Shift</h3>
+    <p class="text-xs text-slate-500 mt-1">Offer XLM for coverage. Funds lock in escrow when someone claims.</p>
+    <form id="postForm" class="mt-5 space-y-4" onsubmit="submitShift(event)">
+      <div>
+        <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Title</label>
+        <input id="fTitle" required maxlength="60" placeholder="e.g. Morning Espresso Rush"
+          class="mt-1.5 w-full glass rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-600 outline-none focus:border-violet-soft/60 transition" />
+      </div>
+      <div>
+        <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Location</label>
+        <input id="fLocation" required maxlength="60" placeholder="e.g. Campus Cafe, Student Center"
+          class="mt-1.5 w-full glass rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-600 outline-none focus:border-violet-soft/60 transition" />
+      </div>
+      <div class="grid grid-cols-3 gap-3">
+        <div class="col-span-3 sm:col-span-1">
+          <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Date</label>
+          <input id="fDate" type="date" required class="mt-1.5 w-full glass rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-violet-soft/60 transition" />
+        </div>
+        <div>
+          <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Start</label>
+          <input id="fStart" type="time" required class="mt-1.5 w-full glass rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-violet-soft/60 transition" />
+        </div>
+        <div>
+          <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">End</label>
+          <input id="fEnd" type="time" required class="mt-1.5 w-full glass rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-violet-soft/60 transition" />
+        </div>
+      </div>
+      <div>
+        <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">XLM Reward</label>
+        <div class="mt-1.5 flex gap-2" id="tierPills"></div>
+        <input id="fReward" type="number" step="0.1" min="1" max="100" required placeholder="8.0"
+          class="mt-2 w-full glass rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-600 outline-none focus:border-violet-soft/60 transition" />
+        <p class="text-[11px] text-slate-600 mt-1.5 font-mono">Locked in a Soroban escrow contract on claim · testnet XLM</p>
+      </div>
+      <div>
+        <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Notes</label>
+        <textarea id="fNotes" rows="3" maxlength="300" placeholder="Dress code, register login, who to ask for keys…"
+          class="mt-1.5 w-full glass rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-600 outline-none focus:border-violet-soft/60 transition resize-none"></textarea>
+      </div>
+      <div class="glass rounded-xl px-4 py-3 text-xs font-mono text-slate-400 flex items-center gap-2 flex-wrap">
+        <span class="dot dot-cyan"></span>
+        Posting as <span id="postAsName" class="text-cyanic font-semibold">Maya Chen</span> · <span id="postWalletLine" class="text-slate-500">…</span>
+      </div>
+      <button type="submit" class="w-full py-3 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-violet to-cyanic glow-violet hover:opacity-90 hover:scale-[1.01] active:scale-[.99] transition">
+        Publish Shift → Lock Offer On-Chain
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- ══════════════ PAYMENT DEMO MODAL ══════════════ -->
+<div id="payModal" class="modal hidden-modal fixed inset-0 z-50 grid place-items-center p-4">
+  <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" onclick="closeModal('payModal')"></div>
+  <div class="modal-box relative glass-strong rounded-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto p-6 shadow-2xl">
+    <button onclick="closeModal('payModal')" class="absolute top-4 right-4 w-8 h-8 rounded-lg grid place-items-center text-slate-500 hover:text-white hover:bg-white/10 transition">✕</button>
+    <h3 class="text-xl font-bold text-white">Payment Demo <span class="pill text-[10px] font-bold px-2 py-0.5 border border-cyanic/50 text-cyanic bg-cyanic/10 align-middle ml-1">Simulator</span></h3>
+    <p class="text-xs text-slate-500 mt-1">Watch how a Soroban smart-contract escrow holds and releases XLM automatically. No real funds.</p>
+
+    <!-- Mode tabs -->
+    <div class="mt-5 flex gap-1 glass rounded-xl p-1">
+      <button id="payTabSim" onclick="payTab('sim')" class="pill flex-1 py-1.5 text-xs font-bold transition">Simulator</button>
+      <button id="payTabLive" onclick="payTab('live')" class="pill flex-1 py-1.5 text-xs font-bold transition">Live Testnet · Paiflow × Freighter</button>
+    </div>
+
+    <div id="paySimPanel">
+
+    <!-- Actors -->
+    <div class="mt-6 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+      <div class="glass rounded-2xl p-4 text-center">
+        <p class="text-[10px] uppercase tracking-widest text-slate-500">Poster</p>
+        <p class="text-sm font-bold text-white mt-1">Maya Chen</p>
+        <p class="text-xs font-mono text-violet-soft mt-1">GAVQ…K2M</p>
+        <p class="mt-2 text-lg font-extrabold text-white"><span id="balPoster">125.5</span> <span class="text-xs text-violet-soft font-semibold">XLM</span></p>
+      </div>
+      <div class="flex flex-col items-center gap-1.5 px-1">
+        <div class="w-12 h-12 rounded-2xl border border-cyanic/40 bg-cyanic/10 grid place-items-center glow-cyan">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="4" y="10" width="16" height="10" rx="2" stroke="#22D3EE" stroke-width="1.8"/><path d="M8 10V7a4 4 0 0 1 8 0v3" stroke="#22D3EE" stroke-width="1.8"/></svg>
+        </div>
+        <p class="text-[9px] font-mono text-cyanic uppercase tracking-wider">escrow</p>
+      </div>
+      <div class="glass rounded-2xl p-4 text-center">
+        <p class="text-[10px] uppercase tracking-widest text-slate-500">Coverer</p>
+        <p class="text-sm font-bold text-white mt-1">Alex Rivera</p>
+        <p class="text-xs font-mono text-violet-soft mt-1">GBQX…7PL</p>
+        <p class="mt-2 text-lg font-extrabold text-white"><span id="balCoverer">42.25</span> <span class="text-xs text-violet-soft font-semibold">XLM</span></p>
+      </div>
+    </div>
+
+    <!-- Flow lanes -->
+    <div class="mt-6 space-y-5">
+      <div>
+        <div class="flex justify-between text-[11px] font-mono text-slate-500 mb-1.5"><span>lock()</span><span>poster → escrow</span></div>
+        <div class="lane"><div id="tokenLock" class="token"></div></div>
+      </div>
+      <div>
+        <div class="flex justify-between text-[11px] font-mono text-slate-500 mb-1.5"><span>release()</span><span>escrow → coverer</span></div>
+        <div class="lane"><div id="tokenRelease" class="token cyan"></div></div>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="mt-6 flex flex-wrap items-center gap-2">
+      <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider mr-1">Amount</span>
+      <div id="simAmounts" class="flex gap-1.5"></div>
+      <button id="simBtn" onclick="runSim()" class="ml-auto px-4 py-2 rounded-xl font-bold text-xs text-white bg-gradient-to-r from-violet to-cyanic glow-violet hover:opacity-90 active:scale-95 transition">
+        ▶ Run Escrow Simulation
+      </button>
+    </div>
+
+    <!-- Tx log -->
+    <div class="mt-5 glass rounded-2xl p-4 h-44 overflow-y-auto font-mono text-[11px] leading-relaxed" id="txLog">
+      <p class="text-slate-600">// awaiting simulation…</p>
+    </div>
+    </div><!-- /paySimPanel -->
+
+    <!-- Live testnet panel -->
+    <div id="payLivePanel" class="hidden mt-5 space-y-4">
+      <div class="glass rounded-2xl p-4">
+        <p class="text-[10px] uppercase tracking-widest text-slate-500">From · your Freighter <span class="normal-case">(acting as <span id="liveFromName" class="text-slate-300"></span>)</span></p>
+        <div id="liveFrom" class="mt-2"></div>
+      </div>
+      <div class="glass rounded-2xl p-4">
+        <p class="text-[10px] uppercase tracking-widest text-slate-500">Route · your Paiflow deployment</p>
+        <div class="mt-2 flex items-start gap-2">
+          <span class="dot dot-live shrink-0 mt-1"></span>
+          <p class="flex-1 font-mono text-[11px] text-slate-400 break-all leading-relaxed">On Receive (XLM) · <span class="text-cyanic">134fa50b…bce3</span> · recipients follow your deployed flow</p>
+          <a href="https://beta.app.paiflow.xyz/deployments/134fa50b-3fa7-4108-94ca-472de041bce3" target="_blank" class="pill px-2 py-1 text-[10px] font-bold border border-violet-soft/40 text-violet-soft hover:bg-violet/15 transition shrink-0">open ↗</a>
+        </div>
+        <p class="text-[10px] text-slate-600 mt-2 font-mono">prepare <span class="text-violet-soft">→</span> sign in Freighter <span class="text-violet-soft">→</span> submit <span class="text-violet-soft">→</span> confirm · every step lands in Paiflow</p>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider mr-1">Amount</span>
+        <div id="liveAmounts" class="flex gap-1.5"></div>
+      </div>
+      <button id="liveBtn" onclick="liveSend()" class="w-full py-3 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-cyanic to-violet glow-cyan hover:opacity-90 hover:scale-[1.01] active:scale-[.99] transition">Prepare · Sign · Submit via Paiflow</button>
+      <div id="liveStatus"></div>
+      <p class="text-[10px] text-slate-600 font-mono text-center">real transaction · routed through your Paiflow deployment · testnet XLM only</p>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ PROFILE MODAL ══════════════ -->
+<div id="profileModal" class="modal hidden-modal fixed inset-0 z-50 grid place-items-center p-4">
+  <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" onclick="closeModal('profileModal')"></div>
+  <div class="modal-box relative glass-strong rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto p-6 shadow-2xl">
+    <button onclick="closeModal('profileModal')" class="absolute top-4 right-4 w-8 h-8 rounded-lg grid place-items-center text-slate-500 hover:text-white hover:bg-white/10 transition">✕</button>
+    <div id="profileBody"></div>
+  </div>
+</div>
+
+<!-- ══════════════ WALLET CONNECT CONFIRMATION ══════════════ -->
+<div id="walletModal" class="modal hidden-modal fixed inset-0 z-50 grid place-items-center p-4">
+  <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" onclick="closeModal('walletModal')"></div>
+  <div class="modal-box relative glass-strong rounded-2xl w-full max-w-md p-6 shadow-2xl">
+    <button onclick="closeModal('walletModal')" class="absolute top-4 right-4 w-8 h-8 rounded-lg grid place-items-center text-slate-500 hover:text-white hover:bg-white/10 transition">✕</button>
+    <div id="walletConfirmBody"></div>
+  </div>
+</div>
+
+<!-- Toasts -->
+<div id="toasts" class="fixed bottom-5 right-5 z-[60] flex flex-col gap-2 items-end"></div>
+
+<script>
+/* ═══════════════════════════ DATA & STATE ═══════════════════════════ */
+const STORE_KEY = 'shiftswap:testnet:v1';
+
+const USERS = {
+  maya:   { id:'maya',   name:'Maya Chen',  initials:'MC', grad:'from-violet to-cyanic',  pubkey:'GAVQ…K2M', tag:'Barista lead' },
+  alex:   { id:'alex',   name:'Alex Rivera', initials:'AR', grad:'from-fuchsia-500 to-violet', pubkey:'GBQX…7PL', tag:'Night owl' },
+  jordan: { id:'jordan', name:'Jordan Lee', initials:'JL', grad:'from-cyanic to-emerald-400', pubkey:'GDWZ…3RT', tag:'Gym rat' },
+};
+
+const SEED_SHIFTS = [
+  { id:'s1', title:'Morning Espresso Rush', location:'Campus Cafe, Student Center', date:'2026-10-22', start:'11:50', end:'17:00', reward:12, notes:'Two-register rush after the 11:40 class wave. Login: MAYA_C. Apron behind the counter.', authorId:'maya', status:'open', claimerId:null, createdAt:Date.now()-86400000*2 },
+  { id:'s2', title:'Library Front Desk', location:'Central Library, Ground Floor', date:'2026-10-23', start:'14:00', end:'20:00', reward:8, notes:'Quiet shift. Check out laptops, shelve returns. Front-desk key with Denise.', authorId:'alex', status:'open', claimerId:null, createdAt:Date.now()-86400000 },
+  { id:'s3', title:'Bookstore Stock & Scan', location:'Campus Bookstore, Union Wing', date:'2026-10-24', start:'09:00', end:'13:00', reward:6, notes:'Scan the new textbook delivery, update shelf tags. Coffee is on us.', authorId:'alex', status:'open', claimerId:null, createdAt:Date.now()-43200000 },
+  { id:'s4', title:'Gym Equipment Reset', location:'Rec Center, Weight Room', date:'2026-10-22', start:'21:00', end:'23:30', reward:15, notes:'Wipe down stations, rerack weights, lock up by 11:30. Alarm code in notes folder.', authorId:'jordan', status:'escrowed', claimerId:'maya', createdAt:Date.now()-172800000 },
+  { id:'s5', title:'Lab Monitor Evening', location:'Science Hall, Room 204', date:'2026-10-21', start:'18:00', end:'22:00', reward:10, notes:'Proctor the open lab, restock pipettes. Prof. Osei signs off at close.', authorId:'maya', status:'completed', claimerId:'alex', createdAt:Date.now()-259200000, completedAt:Date.now()-129600000 },
+  { id:'s6', title:'Welcome Desk Buddy', location:'Admissions Hall, Kiosk 2', date:'2026-10-25', start:'10:00', end:'14:00', reward:9, notes:'Help prospective students find sessions. Script is in the shared drive.', authorId:'jordan', status:'accepted', claimerId:'alex', createdAt:Date.now()-21600000 },
+];
+
+let state = { currentUser:'maya', shifts: [], filter:'all', simAmount:10, simRunning:false, payTab:'sim', liveAmount:5, wallets:{}, balances:{ poster:125.5, coverer:42.25 } };
+let simTimers = [];
+let walletBalances = {};
+
+function save() { localStorage.setItem(STORE_KEY, JSON.stringify({ currentUser: state.currentUser, shifts: state.shifts, wallets: state.wallets })); }
+function load() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (raw) {
+      const d = JSON.parse(raw);
+      state.currentUser = d.currentUser || 'maya';
+      if (d.wallets) state.wallets = { ...state.wallets, ...d.wallets };
+      state.shifts = d.shifts || [];
+      if (state.shifts.length) return;
+    }
+  } catch(e) {}
+  state.shifts = JSON.parse(JSON.stringify(SEED_SHIFTS));
+}
+function resetDemo() {
+  localStorage.removeItem(STORE_KEY);
+  state.shifts = JSON.parse(JSON.stringify(SEED_SHIFTS));
+  state.filter = 'all'; state.balances = { poster:125.5, coverer:42.25 };
+  render(); toast('Demo data reset · testnet state restored', 'cyan');
+}
+
+/* ═══════════════════════════ HELPERS ═══════════════════════════ */
+const $ = id => document.getElementById(id);
+const user = id => USERS[id] || USERS.maya;
+const esc = s => String(s??'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function fmtDate(d) {
+  const dt = new Date(d + 'T00:00:00');
+  return dt.toLocaleDateString('en-US', { month:'short', day:'numeric' });
+}
+function fmtTime(t) {
+  const [h,m] = t.split(':').map(Number);
+  const ap = h >= 12 ? 'PM' : 'AM';
+  const hh = h % 12 === 0 ? 12 : h % 12;
+  return `${hh}:${String(m).padStart(2,'0')} ${ap}`;
+}
+function windowStr(s) { return `${fmtDate(s.date)}, ${fmtTime(s.start)} → ${fmtTime(s.end)}`; }
+function randHash() { return Array.from({length:4},()=>Math.floor(Math.random()*65536).toString(16).padStart(4,'0')).join(''); }
+
+function avatar(u, size='w-9 h-9 text-[11px]') {
+  return `<span class="${size} rounded-full grid place-items-center font-bold text-white bg-gradient-to-br ${u.grad} ring-2 ring-white/10 shrink-0">${u.initials}</span>`;
+}
+function stellarBadge(cls='w-4 h-4') {
+  return `<svg class="${cls}" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="url(#sg)" stroke-width="1.6"/><path d="M8.5 12.5 12 9l3.5 3.5M8.5 15 12 11.5 15.5 15" stroke="url(#sg)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><defs><linearGradient id="sg" x1="3" y1="3" x2="21" y2="21"><stop stop-color="#818CF8"/><stop offset="1" stop-color="#22D3EE"/></linearGradient></defs></svg>`;
+}
+function statusMeta(status) {
+  return {
+    open:      { label:'Open',      cls:'text-emerald-400 border-emerald-400/30 bg-emerald-400/10', dot:'dot-live' },
+    accepted:  { label:'Accepted',  cls:'text-amber-400 border-amber-400/30 bg-amber-400/10',       dot:'dot-violet' },
+    escrowed:  { label:'Escrowed',  cls:'text-cyanic border-cyanic/40 bg-cyanic/10',                 dot:'dot-cyan' },
+    completed: { label:'Completed', cls:'text-violet-soft border-violet-soft/30 bg-violet/10',       dot:'dot-slate' },
+  }[status];
+}
+
+/* ═══════════════════════════ RENDER ═══════════════════════════ */
+const FILTERS = [
+  { key:'all',       label:'All' },
+  { key:'open',      label:'Open' },
+  { key:'accepted',  label:'Accepted' },
+  { key:'escrowed',  label:'Escrowed' },
+  { key:'completed', label:'Completed' },
+];
+
+function render() {
+  renderActor(); renderFilters(); renderGrid(); renderStats(); renderWallet();
+  $('postAsName').textContent = user(state.currentUser).name;
+  const w = state.wallets[state.currentUser];
+  $('postWalletLine').textContent = w
+    ? 'payouts signed via Freighter · ' + shortAddr(w)
+    : 'no wallet linked — connect Freighter for real XLM payouts';
+}
+function renderActor() {
+  const u = user(state.currentUser);
+  $('actorName').textContent = u.name;
+  $('actorAvatar').textContent = u.initials;
+  $('actorAvatar').className = `w-7 h-7 rounded-full grid place-items-center text-[11px] font-bold text-white bg-gradient-to-br ${u.grad}`;
+  $('actorList').innerHTML = Object.values(USERS).map(x => `
+    <button onclick="switchUser('${x.id}')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/5 transition text-left ${x.id===state.currentUser?'bg-white/5':''}">
+      ${avatar(x)}
+      <span class="flex-1 min-w-0">
+        <span class="block text-sm font-semibold text-white">${esc(x.name)} ${x.id===state.currentUser?'<span class="text-[9px] font-mono text-cyanic ml-1">● active</span>':''}</span>
+        <span class="block text-[11px] text-slate-500 font-mono">${x.pubkey} · ${esc(x.tag)}${state.wallets[x.id] ? ' · <span class="text-cyanic">● wallet</span>' : ' · <span class="text-slate-600">○ no wallet</span>'}</span>
+      </span>
+    </button>`).join('');
+}
+function renderFilters() {
+  $('filterBar').innerHTML = FILTERS.map(f => {
+    const n = f.key === 'all' ? state.shifts.length : state.shifts.filter(s => s.status === f.key).length;
+    const active = state.filter === f.key;
+    return `<button onclick="setFilter('${f.key}')" class="pill px-4 py-2 text-sm font-semibold transition flex items-center gap-2 ${active?'text-white bg-gradient-to-r from-violet/80 to-cyanic/60 glow-violet':'text-slate-400 hover:text-white hover:bg-white/5'}">
+      ${f.label}
+      <span class="pill text-[10px] font-bold px-1.5 py-px ${active?'bg-white/20 text-white':'bg-white/5 text-slate-500'}">${n}</span>
+    </button>`;
+  }).join('');
+}
+function renderStats() {
+  $('statOpen').textContent = state.shifts.filter(s=>s.status==='open').length;
+  $('statLocked').textContent = state.shifts.filter(s=>s.status==='escrowed'||s.status==='accepted').reduce((a,s)=>a+s.reward,0).toFixed(1);
+  $('statDone').textContent = state.shifts.filter(s=>s.status==='completed').length;
+}
+function cardAction(s) {
+  const me = state.currentUser, a = user(s.authorId), isAuthor = me === s.authorId, isClaimer = me === s.claimerId;
+  if (s.status === 'open') {
+    if (isAuthor) return `<button onclick="openDetail('${s.id}')" class="w-full py-2.5 rounded-xl text-sm font-bold glass text-slate-300 hover:text-white hover:border-violet-soft/40 transition">Manage Your Shift</button>`;
+    return `<button onclick="openDetail('${s.id}')" class="w-full py-2.5 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-violet to-cyanic glow-violet hover:opacity-90 hover:scale-[1.02] active:scale-[.98] transition flex items-center justify-center gap-2">View & Claim</button>`;
+  }
+  if (s.status === 'accepted') {
+    if (isAuthor) return `<button onclick="openDetail('${s.id}')" class="w-full py-2.5 rounded-xl text-sm font-bold text-amber-300 border border-amber-400/30 bg-amber-400/10 hover:bg-amber-400/20 transition">Awaiting Escrow Lock…</button>`;
+    return `<button onclick="openDetail('${s.id}')" class="w-full py-2.5 rounded-xl text-sm font-bold glass text-slate-400 hover:text-white transition">${isClaimer?'Claimed by You · Details':'View Details'}</button>`;
+  }
+  if (s.status === 'escrowed') {
+    if (isAuthor) return `<button onclick="openDetail('${s.id}')" class="w-full py-2.5 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-cyanic to-violet glow-cyan hover:opacity-90 transition">Verify & Release ${s.reward} XLM</button>`;
+    if (isClaimer) return `<button onclick="openDetail('${s.id}')" class="w-full py-2.5 rounded-xl text-sm font-bold border border-cyanic/40 bg-cyanic/10 text-cyanic hover:bg-cyanic/20 transition">Escrowed · Awaiting Verification</button>`;
+    return `<button onclick="openDetail('${s.id}')" class="w-full py-2.5 rounded-xl text-sm font-bold glass text-slate-400 hover:text-white transition">View Escrow</button>`;
+  }
+  return `<button onclick="openDetail('${s.id}')" class="w-full py-2.5 rounded-xl text-sm font-bold glass text-slate-400 hover:text-white transition flex items-center justify-center gap-2"><span class="text-emerald-400">✓</span> Settled On-Chain</button>`;
+}
+function renderGrid() {
+  const list = state.shifts
+    .filter(s => state.filter === 'all' || s.status === state.filter)
+    .sort((a,b) => b.createdAt - a.createdAt);
+  $('emptyState').classList.toggle('hidden', list.length > 0);
+  $('shiftGrid').innerHTML = list.map((s,i) => {
+    const a = user(s.authorId), m = statusMeta(s.status);
+    const claimer = s.claimerId ? user(s.claimerId) : null;
+    return `
+    <article class="enter glass rounded-2xl p-5 card-hover flex flex-col gap-4" style="animation-delay:${i*55}ms">
+      <div class="flex items-center justify-between">
+        <span class="pill text-[11px] font-bold px-2.5 py-1 border ${m.cls} flex items-center gap-1.5"><span class="dot ${m.dot}"></span>${m.label}</span>
+        <span class="flex items-center gap-1.5 text-white font-extrabold text-lg">${stellarBadge()} ${s.reward} <span class="text-[10px] font-bold text-violet-soft tracking-wider">XLM</span></span>
+      </div>
+      <div>
+        <h3 class="font-bold text-white leading-snug">${esc(s.title)}</h3>
+        <p class="text-xs text-slate-400 mt-1 flex items-center gap-1.5">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M12 21s7-5.1 7-11a7 7 0 1 0-14 0c0 5.9 7 11 7 11z" stroke="#64748B" stroke-width="2"/><circle cx="12" cy="10" r="2.5" stroke="#64748B" stroke-width="2"/></svg>
+          ${esc(s.location)}
+        </p>
+        <p class="text-xs font-mono text-slate-500 mt-1.5 flex items-center gap-1.5">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="16" rx="2" stroke="#64748B" stroke-width="2"/><path d="M3 10h18M8 3v4M16 3v4" stroke="#64748B" stroke-width="2" stroke-linecap="round"/></svg>
+          ${windowStr(s)}
+        </p>
+      </div>
+      <div class="flex items-center gap-2.5 pt-3 border-t border-white/5">
+        ${avatar(a,'w-7 h-7 text-[10px]')}
+        <div class="flex-1 min-w-0 leading-tight">
+          <p class="text-xs font-semibold text-slate-200 truncate">${esc(a.name)}</p>
+          <p class="text-[10px] font-mono text-slate-600">${a.pubkey}</p>
+        </div>
+        ${claimer ? `<span class="text-[10px] text-slate-500 font-mono">→ ${esc(claimer.initials)}</span>` : ''}
+      </div>
+      ${cardAction(s)}
+    </article>`;
+  }).join('');
+}
+
+/* ═══════════════════════════ INTERACTIONS ═══════════════════════════ */
+function setFilter(k) { state.filter = k; renderGrid(); renderFilters(); }
+function goFeed(e) { if(e) e.preventDefault(); state.filter = 'all'; render(); window.scrollTo({top:0, behavior:'smooth'}); }
+function toggleActorDD(e) { e.stopPropagation(); $('actorDD').classList.toggle('closed'); }
+function switchUser(id) {
+  state.currentUser = id; save(); render();
+  $('actorDD').classList.add('closed');
+  toast(`Now acting as ${user(id).name}`, 'violet');
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('#actorBtn') && !e.target.closest('#actorDD')) $('actorDD').classList.add('closed');
+  if (!e.target.closest('#walletBtn') && !e.target.closest('#walletDD')) $('walletDD').classList.add('closed');
+});
+
+function openModal(id) { $(id).classList.remove('hidden-modal'); document.body.style.overflow = 'hidden'; }
+function closeModal(id) { $(id).classList.add('hidden-modal'); document.body.style.overflow = ''; }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') ['detailModal','postModal','payModal','profileModal','walletModal'].forEach(closeModal); });
+
+function toast(msg, tone='violet') {
+  const c = tone==='cyan' ? 'border-cyanic/40 text-cyanic' : 'border-violet-soft/40 text-violet-soft';
+  const el = document.createElement('div');
+  el.className = `toast glass-strong ${c} border rounded-xl px-4 py-3 text-sm font-semibold text-slate-100 shadow-2xl flex items-center gap-2 max-w-xs`;
+  el.innerHTML = `<span class="dot ${tone==='cyan'?'dot-cyan':'dot-violet'}"></span><span>${esc(msg)}</span>`;
+  $('toasts').appendChild(el);
+  setTimeout(() => { el.classList.add('out'); setTimeout(()=>el.remove(), 300); }, 3200);
+}
+
+/* ─── Detail / Claim modal ─── */
+function stepStates(s) {
+  const st = s.status;
+  return [
+    { label:'Posted',            sub:'Offer published',                       state:'done' },
+    { label:'Claimed',           sub:'Coverer assigned',                      state: ['accepted','escrowed','completed'].includes(st) ? 'done' : 'pending' },
+    { label:'Funds Escrowed',    sub:`${s.reward} XLM locked in contract`,    state: st==='accepted' ? 'active' : ['escrowed','completed'].includes(st) ? 'done' : 'pending' },
+    { label:'Verified & Paid',   sub:'Released to coverer',                   state: st==='completed' ? 'done' : st==='escrowed' ? 'active' : 'pending' },
+  ];
+}
+function stepperHTML(s) {
+  const steps = stepStates(s);
+  return `<div class="space-y-0 mt-4">` + steps.map((st,i) => {
+    const icon = st.state==='done'
+      ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>`
+      : st.state==='active' ? `<span class="spinner"></span>` : `<span class="text-[10px] font-bold text-slate-500">${i+1}</span>`;
+    return `
+    <div class="step ${st.state} flex gap-3 ${i<3?'pb-4':''} relative">
+      ${i<3?`<span class="absolute left-[13px] top-7 bottom-0 w-px ${st.state==='done'?'bg-gradient-to-b from-violet to-cyanic':'bg-white/10'}"></span>`:''}
+      <span class="ring w-7 h-7 rounded-full border border-white/15 bg-panel grid place-items-center shrink-0 relative z-10">${icon}</span>
+      <span class="pt-0.5">
+        <span class="block text-sm font-bold ${st.state==='pending'?'text-slate-500':'text-white'}">${st.label}</span>
+        <span class="block text-[11px] font-mono text-slate-500">${st.sub}${st.state==='active'&&st.label==='Funds Escrowed'?'…':''}</span>
+      </span>
+    </div>`;
+  }).join('') + `</div>`;
+}
+function detailActions(s) {
+  const me = state.currentUser;
+  if (s.status === 'open') {
+    if (me === s.authorId) return `<p class="text-xs font-mono text-slate-500 text-center">This is your listing — share it so someone can claim it.</p>`;
+    const hasW = !!state.wallets[me];
+    return `<button onclick="claimShift('${s.id}')" class="w-full py-3 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-violet to-cyanic glow-violet hover:opacity-90 hover:scale-[1.01] active:scale-[.99] transition">
+      ${hasW ? `Claim Shift · Lock ${s.reward} XLM in Escrow` : 'Connect Freighter & Claim'}</button>
+      <p class="text-[11px] font-mono text-slate-500 text-center mt-2">${hasW ? `Payout address: ${shortAddr(state.wallets[me])} · testnet` : 'Your linked Freighter address becomes the payout destination'}</p>`;
+  }
+  if (s.status === 'accepted') return `<div class="glass rounded-xl px-4 py-3 text-xs font-mono text-amber-300 flex items-center gap-2"><span class="spinner"></span> Locking ${s.reward} XLM in escrow contract…</div>`;
+  if (s.status === 'escrowed') {
+    const canReal = !!(s.claimerAddr || state.wallets[s.claimerId]);
+    if (me === s.authorId) return `<button onclick="releasePayment('${s.id}')" class="w-full py-3 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-cyanic to-violet glow-cyan hover:opacity-90 transition">${canReal ? `Verify Coverage & Pay ${s.reward} XLM On-Chain` : `Verify & Release ${s.reward} XLM (simulated)`}</button>
+      ${canReal && !state.wallets[me] ? '<p class="text-[11px] font-mono text-slate-500 text-center mt-2">You\'ll sign the payout with your Freighter wallet</p>' : ''}`;
+    if (me === s.claimerId) return `<div class="glass rounded-xl px-4 py-3 text-xs font-mono text-cyanic flex items-center gap-2"><span class="dot dot-cyan"></span> Funds locked. Awaiting poster verification…</div>`;
+    return `<div class="glass rounded-xl px-4 py-3 text-xs font-mono text-slate-500 text-center">Escrow active · ${esc(user(s.claimerId).name)} is covering this shift</div>`;
+  }
+  if (s.status === 'completed') {
+    const txLink = s.txHash ? ` · <a href="https://stellar.expert/explorer/testnet/tx/${s.txHash}" target="_blank" class="text-violet-soft hover:underline">tx ${s.txHash.slice(0,8)}…↗</a>` : '';
+    return `<div class="glass rounded-xl px-4 py-3 text-xs font-mono text-emerald-400 flex items-center gap-2 flex-wrap"><span class="text-base">✓</span> ${s.reward} XLM released to ${esc(user(s.claimerId).name)}${txLink}</div>`;
+  }
+  return '';
+}
+function openDetail(id) {
+  const s = state.shifts.find(x => x.id === id); if (!s) return;
+  const a = user(s.authorId), m = statusMeta(s.status);
+  const claimer = s.claimerId ? user(s.claimerId) : null;
+  $('detailBody').innerHTML = `
+    <div class="flex items-center justify-between pr-8">
+      <span class="pill text-[11px] font-bold px-2.5 py-1 border ${m.cls} flex items-center gap-1.5"><span class="dot ${m.dot}"></span>${m.label}</span>
+      <span class="flex items-center gap-1.5 text-white font-extrabold text-2xl">${stellarBadge('w-5 h-5')} ${s.reward} <span class="text-xs font-bold text-violet-soft tracking-wider">XLM</span></span>
+    </div>
+    <h3 class="text-2xl font-extrabold text-white mt-3 leading-snug">${esc(s.title)}</h3>
+    <p class="text-sm text-slate-400 mt-1">${esc(s.location)}</p>
+    <p class="text-xs font-mono text-slate-500 mt-1.5">${windowStr(s)}</p>
+    <div class="glass rounded-xl p-3.5 mt-4 flex items-center gap-3">
+      ${avatar(a)}
+      <div class="flex-1 leading-tight">
+        <p class="text-sm font-semibold text-white">${esc(a.name)} <span class="text-[10px] font-mono text-slate-500">· poster</span></p>
+        <p class="text-[11px] font-mono text-slate-500">${a.pubkey}</p>
+      </div>
+      ${claimer ? `<div class="text-right leading-tight"><p class="text-sm font-semibold text-cyanic">${esc(claimer.name)}</p><p class="text-[10px] font-mono text-slate-500">coverer</p></div>` : ''}
+    </div>
+    ${s.notes ? `<div class="glass rounded-xl p-3.5 mt-3 text-xs text-slate-400 leading-relaxed"><span class="text-[10px] uppercase tracking-widest text-slate-600 block mb-1">Notes from poster</span>${esc(s.notes)}</div>` : ''}
+    <p class="text-[10px] font-bold uppercase tracking-widest text-slate-500 mt-5 mb-1">On-chain escrow trace</p>
+    ${stepperHTML(s)}
+    <div id="detailAction" class="mt-5">${detailActions(s)}</div>`;
+  openModal('detailModal');
+}
+function claimShift(id) {
+  const s = state.shifts.find(x => x.id === id); if (!s || s.status !== 'open') return;
+  if (s.authorId === state.currentUser) { toast('You can\'t claim your own shift', 'violet'); return; }
+  if (!state.wallets[state.currentUser]) {
+    toast('Connect your Freighter wallet — it becomes your payout address', 'cyan');
+    askConnectWallet(() => claimShift(id));
+    return;
+  }
+  s.status = 'accepted'; s.claimerId = state.currentUser; s.claimerAddr = state.wallets[state.currentUser]; save(); renderGrid(); renderFilters(); renderStats();
+  openDetail(id);
+  setTimeout(() => {
+    s.status = 'escrowed'; save(); renderGrid(); renderFilters(); renderStats();
+    toast(`${s.reward} XLM locked in escrow · covering ${user(s.claimerId).name}`, 'cyan');
+    if (!$('detailModal').classList.contains('hidden-modal')) openDetail(id);
+  }, 2200);
+}
+async function releasePayment(id) {
+  const s = state.shifts.find(x => x.id === id); if (!s || s.status !== 'escrowed') return;
+  const box = $('detailAction');
+  const claimerAddr = s.claimerAddr || state.wallets[s.claimerId];
+  if (!claimerAddr) {
+    // Legacy demo data: claimer never linked a wallet — fall back to simulated release
+    box.innerHTML = `<div class="glass rounded-xl px-4 py-3 text-xs font-mono text-cyanic flex items-center gap-2"><span class="spinner"></span> Claimer has no linked wallet — simulating release of ${s.reward} XLM…</div>`;
+    setTimeout(() => {
+      s.status = 'completed'; s.completedAt = Date.now(); save(); renderGrid(); renderFilters(); renderStats();
+      toast(`${s.reward} XLM released to ${user(s.claimerId).name} (simulated)`, 'cyan');
+      if (!$('detailModal').classList.contains('hidden-modal')) openDetail(id);
+    }, 1700);
+    return;
+  }
+  if (!state.wallets[state.currentUser]) {
+    toast('Connect your Freighter to sign the payout transaction', 'cyan');
+    askConnectWallet(() => releasePayment(id));
+    return;
+  }
+  box.innerHTML = `<div class="glass rounded-xl px-4 py-3 text-xs font-mono text-cyanic flex items-center gap-2"><span class="spinner"></span> Preparing payout via Paiflow…</div>`;
+  try {
+    const r = await paiflowPay(state.wallets[state.currentUser], s.reward, (phase, label) => {
+      box.innerHTML = `<div class="glass rounded-xl px-4 py-3 text-xs font-mono text-cyanic flex items-center gap-2"><span class="spinner"></span> » ${esc(label)}</div>`;
+    });
+    s.status = 'completed'; s.completedAt = Date.now(); s.txHash = r.txHash; save(); renderGrid(); renderFilters(); renderStats();
+    toast(`✓ ${s.reward} XLM released via Paiflow — tx ${r.txHash.slice(0,8)}…`, 'cyan');
+    refreshWalletBalance(state.wallets[state.currentUser]);
+    if (!$('detailModal').classList.contains('hidden-modal')) openDetail(id);
+  } catch(e) {
+    const msg = (e && e.message) || 'Payout failed';
+    box.innerHTML = `<div class="glass rounded-xl px-4 py-3 text-xs font-mono text-rose-400 flex items-center gap-2 flex-wrap">✕ ${esc(msg)}
+      <button onclick="fundWallet()" class="ml-auto underline text-cyanic hover:text-white">fund via friendbot</button>
+      <button onclick="releasePayment('${s.id}')" class="underline text-violet-soft hover:text-white">retry</button></div>`;
+    toast('Payout failed: ' + msg, 'violet');
+  }
+}
+
+/* ─── Post a shift ─── */
+function openPostModal() {
+  $('tierPills').innerHTML = [5,8,10,15].map(t =>
+    `<button type="button" onclick="$('fReward').value=${t}" class="pill px-3 py-1.5 text-xs font-bold border border-violet-soft/30 text-violet-soft hover:bg-violet/15 transition">${t} XLM</button>`).join('');
+  const d = new Date(); $('fDate').min = d.toISOString().slice(0,10);
+  openModal('postModal');
+  setTimeout(()=>$('fTitle').focus(), 250);
+}
+function submitShift(e) {
+  e.preventDefault();
+  const title = $('fTitle').value.trim(), loc = $('fLocation').value.trim(), date = $('fDate').value,
+        start = $('fStart').value, end = $('fEnd').value, reward = parseFloat($('fReward').value), notes = $('fNotes').value.trim();
+  if (!title || !loc || !date || !start || !end || !(reward > 0)) return;
+  if (end <= start) { $('fEnd').classList.add('shake'); setTimeout(()=>$('fEnd').classList.remove('shake'),450); toast('End time must be after start time','violet'); return; }
+  state.shifts.unshift({ id:'s'+Date.now(), title, location:loc, date, start, end, reward:Math.round(reward*10)/10, notes,
+    authorId:state.currentUser, status:'open', claimerId:null, createdAt:Date.now() });
+  save(); render(); closeModal('postModal');
+  $('postForm').reset();
+  toast(`"${title}" posted · ${reward} XLM offer on the books`, 'violet');
+}
+
+/* ─── Profile ─── */
+function openProfile() {
+  const u = user(state.currentUser);
+  const mine = state.shifts.filter(s => s.authorId === u.id);
+  const covered = state.shifts.filter(s => s.claimerId === u.id);
+  const earned = covered.filter(s=>s.status==='completed').reduce((a,s)=>a+s.reward,0);
+  const pending = covered.filter(s=>s.status==='escrowed'||s.status==='accepted').reduce((a,s)=>a+s.reward,0);
+  $('profileBody').innerHTML = `
+    <div class="flex items-center gap-4">
+      ${avatar(u,'w-16 h-16 text-xl')}
+      <div>
+        <h3 class="text-xl font-extrabold text-white">${esc(u.name)}</h3>
+        <p class="text-xs font-mono text-violet-soft mt-0.5">${u.pubkey}</p>
+        <p class="text-[11px] text-slate-500 mt-0.5">${esc(u.tag)} · testnet account</p>
+      </div>
+    </div>
+    <div class="grid grid-cols-3 gap-3 mt-5">
+      <div class="glass rounded-xl p-3 text-center"><p class="text-xl font-extrabold text-white">${mine.length}</p><p class="text-[10px] uppercase tracking-wider text-slate-500 mt-0.5">Posted</p></div>
+      <div class="glass rounded-xl p-3 text-center"><p class="text-xl font-extrabold text-cyanic">${covered.length}</p><p class="text-[10px] uppercase tracking-wider text-slate-500 mt-0.5">Covered</p></div>
+      <div class="glass rounded-xl p-3 text-center"><p class="text-xl font-extrabold grad-text">${earned} XLM</p><p class="text-[10px] uppercase tracking-wider text-slate-500 mt-0.5">Earned</p></div>
+    </div>
+    ${(() => { const w = state.wallets[u.id]; return `
+    <div class="glass rounded-xl px-4 py-3 mt-4 flex items-center gap-2 text-xs font-mono ${w ? 'text-cyanic' : 'text-slate-500'}">
+      ${w ? `<span class="dot dot-live shrink-0"></span><span class="break-all">${w}</span>` : `<span class="dot dot-slate shrink-0"></span><span class="flex-1">No Freighter linked — connect to claim shifts & receive payouts</span>`}
+      ${w ? '' : `<button onclick="closeModal('profileModal');askConnectWallet()" class="ml-auto pill px-3 py-1 text-[10px] font-bold border border-violet-soft/40 text-violet-soft hover:bg-violet/15 transition shrink-0">Connect</button>`}
+    </div>`; })()}
+    ${pending>0?`<div class="mt-4 glass rounded-xl px-4 py-3 text-xs font-mono text-cyanic flex items-center gap-2"><span class="dot dot-cyan"></span> ${pending} XLM pending verification in escrow</div>`:''}
+    <p class="text-[10px] font-bold uppercase tracking-widest text-slate-500 mt-5 mb-2">Recent activity</p>
+    <div class="space-y-2">
+      ${[...mine.map(s=>({s,role:'posted'})), ...covered.map(s=>({s,role:'covered'}))].sort((a,b)=>b.s.createdAt-a.s.createdAt).slice(0,4).map(({s,role})=>`
+        <button onclick="closeModal('profileModal');openDetail('${s.id}')" class="w-full glass rounded-xl px-3.5 py-2.5 flex items-center gap-3 hover:border-violet-soft/40 transition text-left">
+          <span class="pill text-[9px] font-bold px-2 py-0.5 border ${role==='posted'?'border-violet-soft/30 text-violet-soft':'border-cyanic/40 text-cyanic'}">${role}</span>
+          <span class="flex-1 text-xs font-semibold text-slate-200 truncate">${esc(s.title)}</span>
+          <span class="text-xs font-bold text-white font-mono">${s.reward} XLM</span>
+        </button>`).join('') || '<p class="text-xs text-slate-600 font-mono">No activity yet — go claim a shift!</p>'}
+    </div>`;
+  openModal('profileModal');
+}
+
+/* ─── Freighter wallet integration (Stellar TESTNET) ─── */
+const HORIZON = 'https://horizon-testnet.stellar.org';
+const FRIENDBOT = 'https://friendbot.stellar.org/?addr=';
+const TESTNET_PASSPHRASE = 'Test SDF Network ; September 2015';
+const EXPLORER_TX = h => `https://stellar.expert/explorer/testnet/tx/${h}`;
+
+function loadScript(src) {
+  return new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = src; s.onload = res; s.onerror = () => rej(new Error('Failed to load ' + src));
+    document.head.appendChild(s);
+  });
+}
+async function ensureFreighter() {
+  if (window.freighterApi) return window.freighterApi;
+  if (!window._frLoad) window._frLoad = loadScript('https://cdn.jsdelivr.net/npm/@stellar/freighter-api@6/build/index.min.js');
+  await window._frLoad;
+  if (!window.freighterApi) throw new Error('Freighter API unavailable');
+  return window.freighterApi;
+}
+async function ensureStellarSdk() {
+  if (window.StellarSdk) return window.StellarSdk;
+  if (!window._sdkLoad) window._sdkLoad = loadScript('https://cdn.jsdelivr.net/npm/@stellar/stellar-sdk@12/dist/stellar-sdk.min.js');
+  await window._sdkLoad;
+  if (!window.StellarSdk) throw new Error('Stellar SDK unavailable');
+  return window.StellarSdk;
+}
+/* Call a freighter-api method that may be promise-based (v5+) or callback-based (legacy) */
+function frCall(fn, ...args) {
+  return new Promise((res, rej) => {
+    let settled = false;
+    const done = (err, val) => { if (settled) return; settled = true; err ? rej(new Error(err)) : res(val); };
+    try {
+      const r = window.freighterApi[fn](...args, done);
+      if (r && typeof r.then === 'function') r.then(v => done(null, v), e => done((e && e.message) || String(e)));
+    } catch(e) { done(e.message); }
+  });
+}
+async function frGetAddress() {
+  try {
+    const v = await frCall('getAddress');
+    if (typeof v === 'string') return v;
+    if (v && (v.address || v.publicKey)) return v.address || v.publicKey;
+  } catch(e) {}
+  const v2 = await frCall('getPublicKey');
+  return (v2 && (v2.address || v2.publicKey)) || (typeof v2 === 'string' ? v2 : null);
+}
+async function frSign(xdr, source) {
+  try {
+    const v = await frCall('signTransaction', xdr, { networkPassphrase: TESTNET_PASSPHRASE, address: source });
+    const s = (v && (v.signedTxXdr || v.signedTx)) || (typeof v === 'string' ? v : null);
+    if (s) return s;
+  } catch(e) { /* fall through to legacy signature */ }
+  const v2 = await frCall('signTransaction', xdr, 'TESTNET');
+  return (v2 && (v2.signedTxXdr || v2.signedTx)) || (typeof v2 === 'string' ? v2 : null);
+}
+function shortAddr(a) { return a ? a.slice(0,4) + '…' + a.slice(-4) : ''; }
+
+/* Build, Freighter-sign and submit a real testnet XLM payment */
+async function sendTestnetXlm(fromAddr, toAddr, amount, memoText) {
+  const sdk = await ensureStellarSdk();
+  const server = new sdk.Horizon.Server(HORIZON);
+  const acc = await server.loadAccount(fromAddr);
+  const tx = new sdk.TransactionBuilder(acc, { fee: sdk.BASE_FEE, networkPassphrase: TESTNET_PASSPHRASE })
+    .addOperation(sdk.Operation.payment({ destination: toAddr, asset: sdk.Asset.native(), amount: Number(amount).toFixed(7) }))
+    .addMemo(sdk.Memo.text((memoText || 'ShiftSwap').slice(0, 28)))
+    .setTimeout(180)
+    .build();
+  const signedXdr = await frSign(tx.toXDR(), fromAddr);
+  if (!signedXdr) throw new Error('Freighter did not return a signed transaction');
+  return server.submitTransaction(sdk.TransactionBuilder.fromXDR(signedXdr, TESTNET_PASSPHRASE));
+}
+/* ─── Paiflow integration · On Receive (native XLM) · testnet ───
+   Flow per payment: Paiflow PREPARES the unsigned deposit tx → the
+   customer SIGNS it in Freighter → Paiflow SUBMITs it via its relayer,
+   so every payment shows up in the deployment's feed.
+   The page calls the RELATIVE /paiflow/* routes, which serve.js proxies
+   to beta.app.paiflow.xyz (Paiflow's API sends no CORS headers, and no
+   secret token ever lives in this page). Open the app THROUGH serve.js:
+       node serve.js   →   http://localhost:8787/shiftswap-testnet.html   */
+const PAIFLOW_ORIGIN = 'https://beta.app.paiflow.xyz';
+const PAIFLOW_DEPLOYMENT_ID = '134fa50b-3fa7-4108-94ca-472de041bce3';
+const PAIFLOW_API = '/paiflow'; // proxied by serve.js → {origin}/api/deployments/{id}
+const PAIFLOW_PAGE = PAIFLOW_ORIGIN + '/deployments/' + PAIFLOW_DEPLOYMENT_ID;
+const xlmToStroops = x => Math.round(Number(x) * 1e7).toString();
+
+async function paiflowPost(path, body) {
+  const res = await fetch(PAIFLOW_API + path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  const text = await res.text();
+  let json = null; try { json = JSON.parse(text); } catch {}
+  if (!res.ok) throw new Error('Paiflow ' + path + ' failed (' + res.status + '): ' + ((json && (json.message || json.error)) || text.slice(0, 140)));
+  // Responses are wrapped in a {data: ...} envelope (the SDK unwraps this internally)
+  return (json && typeof json === 'object' && 'data' in json) ? json.data : json;
+}
+
+/* 1 · PREPARE — Paiflow builds the unsigned deposit transaction for this sender + amount */
+async function paiflowPrepare(from, amountXlm) {
+  const p = await paiflowPost('/trigger', { amount: xlmToStroops(amountXlm), userAddress: from });
+  if (!p || !p.xdr) throw new Error('Paiflow returned no transaction XDR');
+  if (p.networkPassphrase && p.networkPassphrase !== TESTNET_PASSPHRASE) throw new Error('Refusing non-testnet preparation');
+  return p.xdr;
+}
+
+/* 2 · SIGN — happens in Freighter via frSign(xdr, source) */
+
+/* 3 · SUBMIT — hand the wallet-signed envelope back to Paiflow's relayer */
+async function paiflowSubmit(signedXdr) {
+  const d = await paiflowPost('/submit-trigger', { signedXdr });
+  if (!d || !d.txHash) throw new Error('Paiflow returned no transaction hash');
+  return d.txHash;
+}
+
+/* Status polling so the UI can show CONFIRMED, not just SUBMITTED */
+async function paiflowTxStatus(txHash) {
+  const res = await fetch(PAIFLOW_API + '/tx-status?txHash=' + txHash, { headers: { 'Accept': 'application/json' } });
+  if (!res.ok) throw new Error('Paiflow status check failed (' + res.status + ')');
+  const json = await res.json();
+  return (json && typeof json === 'object' && 'data' in json) ? json.data : json;
+}
+async function paiflowConfirm(txHash, timeoutMs = 60000) {
+  const t0 = Date.now();
+  for (;;) {
+    const st = await paiflowTxStatus(txHash);
+    if (st.status === 'SUCCESS') return st;
+    if (st.status === 'FAILED') throw new Error('Transaction failed on network' + (st.errorMessage ? ': ' + st.errorMessage : ''));
+    if (Date.now() - t0 > timeoutMs) return st; // still PENDING — report honestly
+    await new Promise(r => setTimeout(r, 2000));
+  }
+}
+
+/* Full prepare → wallet sign → submit → confirm, with step callbacks for the UI. */
+async function paiflowPay(from, amountXlm, onStep) {
+  onStep && onStep('prepare', 'Preparing deposit transaction via Paiflow…');
+  const xdr = await paiflowPrepare(from, amountXlm);
+  onStep && onStep('sign', 'Awaiting your signature in Freighter…');
+  await ensureFreighter();
+  const signed = await frSign(xdr, from);
+  if (!signed) throw new Error('Freighter did not return a signed transaction');
+  onStep && onStep('submit', 'Submitting signed envelope to Paiflow…');
+  const txHash = await paiflowSubmit(signed);
+  onStep && onStep('confirm', 'Confirming on Stellar testnet…');
+  const final = await paiflowConfirm(txHash);
+  return { txHash, status: (final && final.status) || 'PENDING' };
+}
+async function fetchBalance(addr) {
+  const sdk = await ensureStellarSdk();
+  const acc = await new sdk.Horizon.Server(HORIZON).loadAccount(addr);
+  const xlm = acc.balances.find(b => b.asset_type === 'native');
+  return xlm ? parseFloat(xlm.balance).toFixed(2) : '0.00';
+}
+async function refreshWalletBalance(addr) {
+  if (!addr) return null;
+  try {
+    const bal = await fetchBalance(addr);
+    walletBalances[addr] = bal;
+    const el = $('walletBal'); if (el) el.textContent = bal;
+    const el2 = $('liveFromBal'); if (el2) el2.textContent = bal + ' XLM';
+    return bal;
+  } catch(e) {
+    walletBalances[addr] = 'unfunded';
+    const el = $('walletBal'); if (el) el.textContent = 'unfunded';
+    return null;
+  }
+}
+
+function toggleWalletDD(e) { e.stopPropagation(); $('walletDD').classList.toggle('closed'); }
+/* From the Linked wallets list: jump to an identity, connecting if it has no wallet yet */
+function switchIdentityForWallet(id) {
+  $('walletDD').classList.add('closed');
+  if (id !== state.currentUser) { state.currentUser = id; save(); render(); }
+  if (!state.wallets[id]) askConnectWallet();
+}
+
+/* In-app consent step before we ever touch the extension */
+let _afterConnect = null;
+function askConnectWallet(cb) {
+  _afterConnect = cb || null;
+  const u = user(state.currentUser);
+  $('walletConfirmBody').innerHTML = `
+    <div class="flex items-center gap-4">
+      ${avatar(u, 'w-14 h-14 text-lg')}
+      <div>
+        <h3 class="text-xl font-bold text-white">Link Freighter wallet?</h3>
+        <p class="text-xs text-slate-500 mt-0.5">as <span class="text-cyanic font-semibold">${esc(u.name)}</span> · Stellar TESTNET</p>
+      </div>
+    </div>
+    <ul class="mt-5 space-y-2.5 text-xs text-slate-400 leading-relaxed">
+      <li class="flex gap-2.5"><span class="text-emerald-400 font-bold mt-px">✓</span><span>Read-only connection — only your <b class="text-slate-200">public address</b> is shared. Nothing can move funds; every payment still needs your explicit signature in Freighter.</span></li>
+      <li class="flex gap-2.5"><span class="text-emerald-400 font-bold mt-px">✓</span><span>The address is stored <b class="text-slate-200">locally in this browser</b> and becomes ${esc(u.name)}'s payout destination when claiming shifts.</span></li>
+      <li class="flex gap-2.5"><span class="text-cyanic font-bold mt-px">i</span><span>Freighter must be on <b class="text-slate-200">TESTNET</b> — the connection is refused otherwise. Testnet XLM has no real value.</span></li>
+      <li class="flex gap-2.5"><span class="text-cyanic font-bold mt-px">i</span><span>Linking a second account? <b class="text-slate-200">Select that account inside the Freighter extension first</b> — Freighter shares whichever account is currently active.</span></li>
+    </ul>
+    <div class="mt-6 flex gap-3">
+      <button onclick="closeModal('walletModal')" class="flex-1 py-3 rounded-xl font-bold text-sm glass text-slate-300 hover:text-white transition">Cancel</button>
+      <button onclick="proceedConnect()" class="flex-1 py-3 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-violet to-cyanic glow-violet hover:opacity-90 active:scale-[.99] transition flex items-center justify-center gap-2">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="3" y="6" width="18" height="14" rx="3" stroke="currentColor" stroke-width="1.8"/><path d="M16 12h.01M3 10h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        Connect Freighter
+      </button>
+    </div>
+    <a href="https://freighter.app" target="_blank" class="block mt-3 text-center text-[11px] text-violet-soft hover:underline">Don't have Freighter? Install the extension ↗</a>`;
+  openModal('walletModal');
+}
+async function proceedConnect() {
+  closeModal('walletModal');
+  await connectWallet();
+  if (state.wallets[state.currentUser] && _afterConnect) { const cb = _afterConnect; _afterConnect = null; cb(); }
+  else _afterConnect = null;
+}
+async function connectWallet() {
+  try {
+    await ensureFreighter();
+    const conn = await frCall('isConnected');
+    const ok = typeof conn === 'boolean' ? conn : !!(conn && conn.isConnected);
+    if (!ok) { toast('Freighter extension not detected', 'violet'); window.open('https://freighter.app', '_blank'); return; }
+    // Prefer requestAccess (account picker) when the extension supports it
+    let addr = null;
+    try {
+      const ra = await frCall('requestAccess');
+      addr = (ra && (ra.address || ra.publicKey)) || (typeof ra === 'string' ? ra : null);
+    } catch(e) {}
+    if (!addr) addr = await frGetAddress();
+    if (!addr) { toast('No account returned from Freighter', 'violet'); return; }
+    const dup = Object.entries(state.wallets).find(([id, a]) => id !== state.currentUser && a === addr);
+    if (dup) toast('Note: this account is already linked to ' + user(dup[0]).name, 'violet');
+    try {
+      const net = await frCall('getNetwork');
+      const n = (typeof net === 'string' ? net : net && net.network) || '';
+      if (n && String(n).toUpperCase() !== 'TESTNET') { toast('Switch Freighter to TESTNET (currently ' + n + ')', 'violet'); return; }
+    } catch(e) {}
+    state.wallets[state.currentUser] = addr; save(); renderWallet(); renderActor();
+    if (!$('postModal').classList.contains('hidden-modal')) render();
+    toast('Freighter linked for ' + user(state.currentUser).name, 'cyan');
+    refreshWalletBalance(addr);
+  } catch(e) {
+    toast('Freighter connection failed: ' + (e.message || e), 'violet');
+  }
+}
+function unlinkWallet() {
+  delete state.wallets[state.currentUser]; save();
+  renderWallet(); renderActor(); render();
+  $('walletDD').classList.add('closed');
+  toast('Wallet unlinked from ' + user(state.currentUser).name, 'violet');
+}
+function copyAddr() {
+  const a = state.wallets[state.currentUser]; if (!a) return;
+  navigator.clipboard.writeText(a).then(() => toast('Address copied', 'cyan'));
+}
+async function fundWallet() {
+  const a = state.wallets[state.currentUser]; if (!a) return;
+  toast('Requesting friendbot funding…', 'cyan');
+  try {
+    const r = await fetch(FRIENDBOT + a);
+    if (!r.ok) throw new Error('friendbot returned ' + r.status);
+    setTimeout(() => { refreshWalletBalance(a); toast('Account funded with testnet XLM', 'cyan'); }, 2500);
+  } catch(e) { toast('Funding failed: ' + (e.message || e), 'violet'); }
+}
+function renderWallet() {
+  const addr = state.wallets[state.currentUser];
+  const btn = $('walletBtn');
+  if (addr) {
+    btn.innerHTML = `<span class="dot dot-live"></span>
+      <span class="text-xs font-bold text-white font-mono">${shortAddr(addr)}</span>
+      <span class="pill text-[9px] font-bold px-1.5 py-px border border-cyanic/50 text-cyanic bg-cyanic/10 tracking-widest">TESTNET</span>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" class="text-slate-500"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>`;
+    $('walletDD').innerHTML = `
+      <p class="text-[10px] uppercase tracking-widest text-slate-500">Freighter · linked to ${esc(user(state.currentUser).name)}</p>
+      <div class="mt-2 flex items-start gap-2">
+        <p class="flex-1 font-mono text-xs text-cyanic break-all leading-relaxed">${addr}</p>
+        <button onclick="copyAddr()" class="pill px-2 py-1 text-[10px] font-bold border border-white/10 text-slate-400 hover:text-white hover:border-violet-soft/40 transition shrink-0">copy</button>
+      </div>
+      <p class="mt-2 text-xs font-mono text-slate-400">Balance: <span id="walletBal" class="text-white font-bold">${walletBalances[addr] ?? '…'}</span> XLM</p>
+      <div class="mt-3 grid grid-cols-2 gap-2">
+        <button onclick="fundWallet()" class="py-2 rounded-xl text-xs font-bold border border-cyanic/40 text-cyanic bg-cyanic/10 hover:bg-cyanic/20 transition">+ Fund (friendbot)</button>
+        <button onclick="unlinkWallet()" class="py-2 rounded-xl text-xs font-bold border border-white/10 text-slate-400 hover:text-white hover:border-rose-400/40 transition">Unlink</button>
+      </div>
+      <a href="https://stellar.expert/explorer/testnet/account/${addr}" target="_blank" class="block mt-3 text-center text-[11px] text-violet-soft hover:underline">View on stellar.expert ↗</a>
+      <p class="text-[10px] uppercase tracking-widest text-slate-500 mt-4 mb-1.5">Linked wallets · all identities</p>
+      <div class="space-y-0.5">
+        ${Object.values(USERS).map(x => `
+        <button onclick="switchIdentityForWallet('${x.id}')" class="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/5 transition text-left">
+          ${avatar(x, 'w-6 h-6 text-[9px]')}
+          <span class="text-xs font-semibold text-slate-300 w-[74px] truncate">${esc(x.name)}</span>
+          <span class="flex-1 font-mono text-[10px] ${state.wallets[x.id] ? 'text-cyanic' : 'text-slate-600'}">${state.wallets[x.id] ? shortAddr(state.wallets[x.id]) : 'not linked'}</span>
+          ${x.id === state.currentUser
+            ? '<span class="text-[9px] font-mono text-slate-500">● active</span>'
+            : `<span class="text-[9px] font-bold ${state.wallets[x.id] ? 'text-slate-500' : 'text-violet-soft'}">${state.wallets[x.id] ? 'switch →' : 'switch & link →'}</span>`}
+        </button>`).join('')}
+      </div>
+      <p class="mt-2.5 text-[10px] text-slate-600 leading-relaxed">Wallets are linked per identity. To link a different Freighter account, <b class="text-slate-400">select that account inside the Freighter extension first</b>, then switch identity here and connect.</p>`;
+    refreshWalletBalance(addr);
+  } else {
+    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="text-cyanic"><rect x="3" y="6" width="18" height="14" rx="3" stroke="currentColor" stroke-width="1.8"/><path d="M16 12h.01M3 10h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <span class="text-xs font-bold">Connect Freighter</span>`;
+    $('walletDD').innerHTML = `
+      <p class="text-xs text-slate-300 font-semibold">Link a testnet wallet</p>
+      <p class="text-[11px] text-slate-500 mt-1 leading-relaxed">Required to claim shifts and receive real testnet XLM payouts. The connected address is stored as <span class="text-cyanic">${esc(user(state.currentUser).name)}</span>'s payout address.</p>
+      <button onclick="askConnectWallet()" class="mt-3 w-full py-2.5 rounded-xl font-bold text-xs text-white bg-gradient-to-r from-violet to-cyanic glow-violet hover:opacity-90 active:scale-[.98] transition">Connect Freighter</button>
+      <a href="https://freighter.app" target="_blank" class="block mt-2.5 text-center text-[11px] text-violet-soft hover:underline">Don't have Freighter? Install the extension ↗</a>`;
+  }
+}
+
+/* ─── Payment demo simulator ─── */
+function openPaymentDemo() {
+  $('simAmounts').innerHTML = [5,8,10,15].map(t =>
+    `<button onclick="setSimAmount(${t})" data-amt="${t}" class="pill px-3 py-1.5 text-xs font-bold border transition ${state.simAmount===t?'border-cyanic/60 text-cyanic bg-cyanic/10 glow-cyan':'border-white/10 text-slate-400 hover:text-white'}">${t} XLM</button>`).join('');
+  payTab(state.payTab || 'sim');
+  openModal('payModal');
+}
+function payTab(t) {
+  state.payTab = t;
+  $('paySimPanel').classList.toggle('hidden', t !== 'sim');
+  $('payLivePanel').classList.toggle('hidden', t !== 'live');
+  const on  = 'pill flex-1 py-1.5 text-xs font-bold transition text-white bg-gradient-to-r from-violet/80 to-cyanic/60 glow-violet';
+  const off = 'pill flex-1 py-1.5 text-xs font-bold transition text-slate-400 hover:text-white';
+  $('payTabSim').className  = t === 'sim'  ? on : off;
+  $('payTabLive').className = t === 'live' ? on : off;
+  if (t === 'live') renderLivePanel();
+}
+function renderLivePanel() {
+  const me = state.currentUser, from = state.wallets[me];
+  $('liveFromName').textContent = user(me).name;
+  if (from) {
+    $('liveFrom').innerHTML = `<div class="flex items-center gap-2 font-mono text-xs">
+      <span class="dot dot-live shrink-0"></span>
+      <span class="text-cyanic break-all">${from}</span>
+      <span class="ml-auto text-white font-bold whitespace-nowrap" id="liveFromBal">${walletBalances[from] ?? '…'} XLM</span></div>`;
+    refreshWalletBalance(from);
+  } else {
+    $('liveFrom').innerHTML = `<button onclick="askConnectWallet(()=>{renderWallet();renderLivePanel();})" class="w-full py-2.5 rounded-xl font-bold text-xs text-white bg-gradient-to-r from-violet to-cyanic glow-violet hover:opacity-90 active:scale-[.98] transition">Connect Freighter</button>
+      <p class="text-[10px] text-slate-600 mt-1.5">The connected account signs and funds this payment.</p>`;
+  }
+  const others = Object.entries(state.wallets).filter(([id, a]) => id !== me && a);
+  $('liveAmounts').innerHTML = [1,2,5,10].map(t =>
+    `<button onclick="state.liveAmount=${t};renderLivePanel()" class="pill px-3 py-1.5 text-xs font-bold border transition ${state.liveAmount===t?'border-cyanic/60 text-cyanic bg-cyanic/10 glow-cyan':'border-white/10 text-slate-400 hover:text-white'}">${t} XLM</button>`).join('');
+}
+async function liveSend() {
+  const me = state.currentUser, from = state.wallets[me];
+  const status = $('liveStatus'), btn = $('liveBtn');
+  if (!from) { toast('Connect Freighter first', 'violet'); return; }
+  btn.disabled = true; btn.classList.add('opacity-50');
+  const stepBox = (label) => {
+    status.innerHTML = `<div class="glass rounded-xl px-4 py-3 text-xs font-mono text-cyanic flex items-center gap-2 flex-wrap"><span class="spinner"></span> » ${esc(label)}</div>`;
+  };
+  try {
+    const r = await paiflowPay(from, state.liveAmount, (phase, label) => stepBox(label));
+    status.innerHTML = `<div class="glass rounded-xl px-4 py-3 text-xs font-mono text-emerald-400 flex items-center gap-2 flex-wrap">✓ Sent ${state.liveAmount} XLM via Paiflow · ${r.status}
+      <a class="text-violet-soft hover:underline" target="_blank" href="${EXPLORER_TX(r.txHash)}">tx ${r.txHash.slice(0,10)}… ↗</a>
+      <a class="text-violet-soft hover:underline" target="_blank" href="${PAIFLOW_PAGE}">view in Paiflow ↗</a></div>`;
+    toast(`${state.liveAmount} XLM routed through Paiflow`, 'cyan');
+    refreshWalletBalance(from).then(renderLivePanel);
+  } catch(e) {
+    const msg = (e && e.message) || 'Payment failed';
+    status.innerHTML = `<div class="glass rounded-xl px-4 py-3 text-xs font-mono text-rose-400 flex items-center gap-2 flex-wrap">✕ ${esc(msg)}
+      <button onclick="fundWallet()" class="ml-auto underline text-cyanic hover:text-white">fund via friendbot</button>
+      <button onclick="liveSend()" class="underline text-violet-soft hover:text-white">retry</button></div>`;
+  }
+  btn.disabled = false; btn.classList.remove('opacity-50');
+}
+function setSimAmount(t) { state.simAmount = t; openPaymentDemo(); }
+function simLog(icon, text, tone='text-slate-400') {
+  const line = document.createElement('p');
+  line.className = `log-line ${tone}`;
+  line.innerHTML = `<span class="text-slate-600">${new Date().toLocaleTimeString('en-US',{hour12:false})}</span>  ${icon} ${text}`;
+  const log = $('txLog');
+  if (log.querySelector('p.text-slate-600') && log.children.length === 1) log.innerHTML = '';
+  log.appendChild(line); log.scrollTop = log.scrollHeight;
+}
+function runSim() {
+  if (state.simRunning) return;
+  state.simRunning = true;
+  const btn = $('simBtn'); btn.textContent = '⏳ Running…'; btn.classList.add('opacity-50');
+  const amt = state.simAmount;
+  const t1 = $('tokenLock'), t2 = $('tokenRelease');
+  t1.classList.remove('fly','vanish'); t2.classList.remove('fly','vanish');
+  void t1.offsetWidth;
+  simLog('»', `invoke create_escrow(shift_id=0x${randHash()}, amount=${amt}.0 XLM)`, 'text-violet-soft');
+  const steps = [
+    [600,  () => simLog('✓', `tx <span class="text-slate-600">${randHash()}</span> · contract instantiated · ledger ${Math.floor(Math.random()*900000+100000)}`, 'text-emerald-400')],
+    [1400, () => { t1.classList.add('fly'); simLog('»', `invoke lock_funds(${amt}.0 XLM) · signer GAVQ…K2M`, 'text-violet-soft'); }],
+    [3000, () => { simLog('✓', `tx <span class="text-slate-600">${randHash()}</span> · ${amt}.0 XLM locked in escrow`, 'text-emerald-400'); }],
+    [3800, () => simLog('»', 'invoke verify_coverage(proof=check-in+shift-log)', 'text-vlate-400'.replace('vlate','violet'))],
+    [4600, () => simLog('✓', `tx <span class="text-slate-600">${randHash()}</span> · coverage verified by poster`, 'text-emerald-400')],
+    [5200, () => { t2.classList.add('fly'); simLog('»', `invoke release(${amt}.0 XLM) → GBQX…7PL`, 'text-violet-soft'); }],
+    [6800, () => {
+      t1.classList.add('vanish'); t2.classList.add('vanish');
+      state.balances.poster = Math.round((state.balances.poster - amt)*100)/100;
+      state.balances.coverer = Math.round((state.balances.coverer + amt)*100)/100;
+      $('balPoster').textContent = state.balances.poster.toFixed(2);
+      $('balCoverer').textContent = state.balances.coverer.toFixed(2);
+      simLog('✓', `tx <span class="text-slate-600">${randHash()}</span> · released · balances settled`, 'text-emerald-400');
+      simLog('■', 'escrow complete — no trust required, no chase required', 'text-cyanic font-semibold');
+      state.simRunning = false; btn.textContent = '▶ Run Escrow Simulation'; btn.classList.remove('opacity-50');
+    }],
+  ];
+  simTimers.forEach(clearTimeout); simTimers = [];
+  steps.forEach(([d,fn]) => simTimers.push(setTimeout(fn, d)));
+}
+
+/* ═══════════════════════════ INIT ═══════════════════════════ */
+load(); render();
+</script>
+</body>
+</html>

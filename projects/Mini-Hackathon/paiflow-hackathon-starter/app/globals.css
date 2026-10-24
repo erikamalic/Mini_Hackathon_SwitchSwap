@@ -1,0 +1,202 @@
+:root {
+  color-scheme: dark;
+  font-family: system-ui, sans-serif;
+  background: #101219;
+  color: #eef0f6;
+}
+body {
+  margin: 0;
+}
+main {
+  max-width: 850px;
+  margin: auto;
+  padding: 24px;
+}
+header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+h1 {
+  font-size: 1.8rem;
+}
+a {
+  color: #bfc9ff;
+  overflow-wrap: anywhere;
+}
+p {
+  line-height: 1.6;
+}
+section,
+details,
+aside {
+  padding: 20px;
+  margin: 20px 0;
+  border: 1px solid #677086;
+  border-radius: 8px;
+}
+aside {
+  background: #292344;
+}
+.chip {
+  background: #35325f;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-weight: bold;
+}
+label {
+  display: block;
+  margin: 16px 0;
+}
+input {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  margin-top: 8px;
+  padding: 12px;
+  color: inherit;
+  background: #1c202c;
+  border: 1px solid #8792ad;
+  border-radius: 4px;
+  font: inherit;
+}
+button {
+  padding: 10px 16px;
+  margin: 4px 0;
+  background: #cac5ff;
+  color: #181329;
+  border: 0;
+  border-radius: 4px;
+  font: inherit;
+  cursor: pointer;
+}
+button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+:focus-visible {
+  outline: 3px solid #e5bfff;
+  outline-offset: 3px;
+}
+summary {
+  cursor: pointer;
+}
+.address,
+pre {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+[role="alert"] {
+  color: #ffb8b8;
+}
+ol {
+  padding-left: 20px;
+}
+li {
+  margin: 20px 0;
+  border-bottom: 1px solid #677086;
+}
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  max-width: 850px;
+  margin: auto;
+  padding: 16px 24px 0;
+}
+.nav .brand {
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+.nav a {
+  color: #bfc9ff;
+}
+.identity {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+select {
+  padding: 8px;
+  color: inherit;
+  background: #1c202c;
+  border: 1px solid #8792ad;
+  border-radius: 4px;
+  font: inherit;
+}
+.cards {
+  list-style: none;
+  padding: 0;
+}
+.card {
+  padding: 16px;
+  margin: 12px 0;
+  border: 1px solid #677086;
+  border-radius: 8px;
+}
+.status {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  background: #35325f;
+}
+.status-open {
+  background: #1f4d3a;
+}
+.status-accepted {
+  background: #54461c;
+}
+.status-escrowed {
+  background: #1c3d5a;
+}
+.status-completed {
+  background: #35325f;
+}
+.status-cancelled {
+  background: #5a1f1f;
+}
+.claim {
+  border-top: 1px solid #677086;
+  padding: 12px 0;
+}
+.chat-log {
+  max-height: 320px;
+  overflow-y: auto;
+  border: 1px solid #677086;
+  border-radius: 8px;
+  padding: 12px;
+  margin: 12px 0;
+}
+.msg {
+  margin: 6px 0;
+  display: flex;
+}
+.msg .msg-body {
+  background: #232838;
+  border-radius: 12px;
+  padding: 8px 12px;
+  max-width: 75%;
+}
+.msg.me {
+  justify-content: flex-end;
+}
+.msg.me .msg-body {
+  background: #35325f;
+}
+.chat-form {
+  display: flex;
+  gap: 8px;
+}
+.chat-form input {
+  flex: 1;
+  margin-top: 0;
+}
+.filters button {
+  margin-right: 8px;
+}
